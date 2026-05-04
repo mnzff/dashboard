@@ -100,6 +100,7 @@ BLUE_SCHEME = {"lo": (219, 234, 254), "hi": (37, 99, 235)}
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
 
+# function to parse triangle csv
 def parse_triangle(content: str):
     df = pd.read_csv(io.StringIO(content), header=0)
     row_headers = df.iloc[:, 0].astype(str).tolist()
