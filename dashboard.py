@@ -20,6 +20,15 @@ if "file_content" not in st.session_state:
 if "file_name" not in st.session_state:
     st.session_state.file_name = None
 
+# ── Light-mode theme tokens ────────────────────────────────────────────────────
+T = dict(
+    bg="#ffffff", surface="#f8fafc", surface2="#f1f5f9",
+    border="#e2e8f0", text="#1e293b", muted="#64748b",
+    plot_bg="#ffffff", paper_bg="#ffffff",
+    grid="#e5e7eb", axis_color="#1e293b",
+    divider="#e2e8f0",
+)
+
 # ── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
