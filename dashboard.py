@@ -100,26 +100,37 @@ BLUE_SCHEME = {"lo": (219, 234, 254), "hi": (37, 99, 235)}
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
 
-# function to parse triangle csv
+# Parse raw CSV content into triangle labels and numeric values.
+# Expects first column to contain origin period labels, and remaining
+# columns to contain development period values.
 def parse_triangle(content: str):
     df = pd.read_csv(io.StringIO(content), header=0)
     row_headers = df.iloc[:, 0].astype(str).tolist()
     col_headers = [str(c).strip() for c in df.columns[1:]]
+    # Convert all remaining cells to numeric, invalid values become NaN.
     raw = df.iloc[:, 1:].apply(pd.to_numeric, errors="coerce").values.astype(float)
     return row_headers, col_headers, raw
 
 
+# Compute chain-ladder development factors, project missing cells,
+# and derive ultimate, latest observed, and IBNR values.
 def compute_chain_ladder(values: np.ndarray):
     n_rows, n_cols = values.shape
+
+    # Calculate average development factors for each transition.
     dev_factors = []
     for j in range(n_cols - 1):
         num, den = 0.0, 0.0
         for i in range(n_rows):
             c, nx = values[i, j], values[i, j + 1]
+            # Only use rows where both current and next period are observed
+            # and current period is non-zero.
             if not (np.isnan(c) or np.isnan(nx)) and c != 0:
-                num += nx; den += c
+                num += nx
+                den += c
         dev_factors.append(num / den if den > 0 else np.nan)
 
+    # Copy the original triangle and fill missing cells with projections.
     projected = values.copy()
     is_projected = np.zeros((n_rows, n_cols), dtype=bool)
     for i in range(n_rows):
@@ -127,19 +138,25 @@ def compute_chain_ladder(values: np.ndarray):
             if np.isnan(projected[i, j]):
                 prev = projected[i, j - 1]
                 f = dev_factors[j - 1]
+                # Only project if the previous cell exists and the factor is valid.
                 if not np.isnan(prev) and not np.isnan(f):
                     projected[i, j] = prev * f
                     is_projected[i, j] = True
 
+    # Ultimates = last column of the projected triangle.
     ultimates = projected[:, -1].copy()
+
+    # Find the latest observed value in each row by scanning backward.
     latest_obs = []
     for i in range(n_rows):
         for j in range(n_cols - 1, -1, -1):
             if not np.isnan(values[i, j]):
-                latest_obs.append(values[i, j]); break
+                latest_obs.append(values[i, j])
+                break
         else:
             latest_obs.append(np.nan)
 
+    # IBNR = ultimate minus latest observed reported value.
     ibnr = np.array([
         u - o if not (np.isnan(u) or np.isnan(o)) else np.nan
         for u, o in zip(ultimates, latest_obs)
@@ -147,6 +164,7 @@ def compute_chain_ladder(values: np.ndarray):
     return dev_factors, projected, is_projected, ultimates, np.array(latest_obs), ibnr
 
 
+# Return the last non-missing development column index for each row.
 def latest_obs_col_idx(raw_values):
     result = []
     n_rows, n_cols = raw_values.shape
@@ -154,11 +172,14 @@ def latest_obs_col_idx(raw_values):
         last_j = -1
         for j in range(n_cols - 1, -1, -1):
             if not np.isnan(raw_values[i, j]):
-                last_j = j; break
+                last_j = j
+                break
         result.append(last_j)
     return result
 
 
+# Format numbers for display, with dashes for missing values and
+# compact formatting for thousands/millions.
 def fmt(n):
     if n is None or (isinstance(n, float) and np.isnan(n)):
         return "—"
@@ -169,12 +190,13 @@ def fmt(n):
     return f"{n:.2f}"
 
 
+# Linearly interpolate between two RGB colors by a fraction t.
+# Returns a CSS rgb string and the resulting integer RGB tuple.
 def lerp_color(t, lo_rgb, hi_rgb):
     r = int(lo_rgb[0] + t * (hi_rgb[0] - lo_rgb[0]))
     g = int(lo_rgb[1] + t * (hi_rgb[1] - lo_rgb[1]))
     b = int(lo_rgb[2] + t * (hi_rgb[2] - lo_rgb[2]))
     return f"rgb({r},{g},{b})", (r, g, b)
-
 
 # ── Chart helpers ──────────────────────────────────────────────────────────────
 
