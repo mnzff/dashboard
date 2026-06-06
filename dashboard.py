@@ -565,17 +565,6 @@ def main():
                 use_container_width=True, config={"displayModeBar": False},
             )
 
-            ch_l, ch_r = st.columns(2)
-            with ch_l:
-                st.plotly_chart(
-                    make_ldf_chart(i, row_headers, col_headers, projected, is_projected, dev_factors),
-                    use_container_width=True, config={"displayModeBar": False},
-                )
-            with ch_r:
-                st.plotly_chart(
-                    make_pct_chart(i, row_headers, col_headers, projected, ultimates),
-                    use_container_width=True, config={"displayModeBar": False},
-                )
 
 
 
